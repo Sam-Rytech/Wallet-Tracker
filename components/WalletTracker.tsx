@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
 import provider from '../lib/provider'
 
@@ -17,45 +17,44 @@ export default function WalletTracker({
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [inputAddress, setInputAddress] = useState<string>('')
   const [balance, setBalance] = useState<string>('')
-  const [loading, setLoading] = useState<boolean>(false)
+  const [source, setSource] = useState<'connected' | 'searched' | null>(null)
 
-  // Fetch balance for current wallet
+  // Fetch balance when walletAddress changes
+  useEffect(() => {
+    if (walletAddress) {
+      fetchBalance(walletAddress)
+    }
+  }, [walletAddress])
+
   const fetchBalance = async (address: string) => {
     try {
-      setLoading(true)
       const bal = await provider.getBalance(address)
-      setBalance(parseFloat(ethers.formatEther(bal)).toFixed(4))
+      setBalance(ethers.formatEther(bal))
     } catch (err) {
       console.error('Balance fetch error:', err)
       setBalance('Error')
-    } finally {
-      setLoading(false)
     }
   }
 
-  // Connect MetaMask
   const connectWallet = async () => {
     try {
       if (!window.ethereum) return alert('MetaMask not detected!')
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       })
-      const addr = accounts[0]
-      setWalletAddress(addr)
-      onAddressChange(addr)
-      fetchBalance(addr)
+      setWalletAddress(accounts[0])
+      setSource('connected')
+      onAddressChange(accounts[0])
     } catch (err) {
       console.error('Wallet connection error:', err)
     }
   }
 
-  // Handle search submit
   const handleSearch = () => {
     if (ethers.isAddress(inputAddress)) {
       setWalletAddress(inputAddress)
-      setBalance('')
+      setSource('searched')
       onAddressChange(inputAddress)
-      fetchBalance(inputAddress)
     } else {
       alert('Invalid wallet address')
     }
@@ -92,13 +91,16 @@ export default function WalletTracker({
 
       {/* Wallet Info */}
       {walletAddress && (
-        <div className="mt-4 space-y-1">
+        <div className="mt-4">
           <p>
             <strong>Address:</strong> {walletAddress}
           </p>
           <p>
             <strong>ETH Balance:</strong>{' '}
-            {loading ? 'Loading...' : `${balance} ETH`}
+            {balance ? `${balance} ETH` : 'Loading...'}
+          </p>
+          <p className="text-sm text-gray-400">
+            Source: {source === 'connected' ? 'MetaMask' : 'Manual Search'}
           </p>
         </div>
       )}
