@@ -16,16 +16,21 @@ export default function RecentTransactions({
     setLoading(true)
     try {
       const res = await fetch(`/api/txs?address=${address}`)
+      if (!res.ok) {
+        console.error('API error:', await res.text())
+        setTxs([])
+        return
+      }
       const data = await res.json()
       setTxs(data.transfers || [])
     } catch (err) {
       console.error('Error fetching transactions:', err)
+      setTxs([])
     } finally {
       setLoading(false)
     }
   }
 
-  // Auto-load if defaultAddress exists
   useEffect(() => {
     if (defaultAddress) fetchTxs(defaultAddress)
   }, [defaultAddress])
