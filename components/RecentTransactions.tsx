@@ -1,81 +1,53 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
-export default function RecentTransactions({
-  defaultAddress,
-}: {
-  defaultAddress?: string
-}) {
-  const [searchAddress, setSearchAddress] = useState(defaultAddress || '')
+export default function RecentTransactions() {
+  const [address, setAddress] = useState('')
   const [txs, setTxs] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
 
-  async function fetchTxs(address: string) {
+  const fetchTxs = async () => {
     if (!address) return
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/txs?address=${address}`)
-      if (!res.ok) {
-        console.error('API error:', await res.text())
-        setTxs([])
-        return
-      }
-      const data = await res.json()
-      setTxs(data.transfers || [])
-    } catch (err) {
-      console.error('Error fetching transactions:', err)
+
+    const res = await fetch(`/api/txs?address=${address}`)
+    if (!res.ok) {
+      console.error('API error:', await res.text())
       setTxs([])
-    } finally {
-      setLoading(false)
+      return
+    }
+
+    const data = await res.json()
+    if (data?.result?.transfers) {
+      setTxs(data.result.transfers)
+    } else {
+      setTxs([])
     }
   }
 
-  useEffect(() => {
-    if (defaultAddress) fetchTxs(defaultAddress)
-  }, [defaultAddress])
-
   return (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg w-full max-w-lg mt-6">
-      <h2 className="text-xl font-semibold mb-4">Recent Transactions</h2>
+    <div>
+      <input
+        type="text"
+        placeholder="Enter Base wallet address"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        className="border p-2 mr-2"
+      />
+      <button
+        onClick={fetchTxs}
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        Search
+      </button>
 
-      {/* Search Form */}
-      <div className="flex mb-4 space-x-2">
-        <input
-          type="text"
-          value={searchAddress}
-          onChange={(e) => setSearchAddress(e.target.value)}
-          placeholder="Enter wallet address"
-          className="flex-1 p-2 rounded bg-gray-700 text-white focus:outline-none"
-        />
-        <button
-          onClick={() => fetchTxs(searchAddress)}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded text-white"
-        >
-          Search
-        </button>
-      </div>
-
-      {loading ? (
-        <p>Loading transactions...</p>
-      ) : txs.length === 0 ? (
+      <h3 className="mt-4 font-bold">Recent Transactions</h3>
+      {txs.length === 0 ? (
         <p>No recent transactions</p>
       ) : (
-        <ul className="space-y-3">
-          {txs.map((tx, idx) => (
-            <li key={idx} className="p-3 bg-gray-700 rounded">
-              <p>
-                <strong>Hash:</strong> {tx.hash?.slice(0, 10)}...
-              </p>
-              <p>
-                <strong>From:</strong> {tx.from}
-              </p>
-              <p>
-                <strong>To:</strong> {tx.to}
-              </p>
-              <p>
-                <strong>Value:</strong> {tx.value} ETH
-              </p>
+        <ul className="mt-2">
+          {txs.map((tx, i) => (
+            <li key={i} className="border-b py-2">
+              {tx.hash}
             </li>
           ))}
         </ul>
