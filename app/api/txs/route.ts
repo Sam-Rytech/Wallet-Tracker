@@ -1,48 +1,58 @@
-import { NextResponse } from 'next/server'
-import { Alchemy, Network, AssetTransfersCategory } from 'alchemy-sdk'
+import type { NextApiRequest, NextApiResponse } from 'next'
 
-export async function GET(req: Request) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const { address } = req.query
+
+  // Load API key from env (server-side)
+  const apiKey =
+    process.env.ALCHEMY_API_KEY || process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Alchemy API key not configured' })
+  }
+
+  if (!address || typeof address !== 'string') {
+    return res.status(400).json({ error: 'Missing or invalid address' })
+  }
+
   try {
-    const { searchParams } = new URL(req.url)
-    const address = searchParams.get('address')
-
-    if (!address) {
-      return NextResponse.json({ error: 'Missing address' }, { status: 400 })
-    }
-
-    if (!process.env.ALCHEMY_API_KEY) {
-      return NextResponse.json(
-        { error: 'Alchemy API key not configured' },
-        { status: 500 }
-      )
-    }
-
-    const settings = {
-      apiKey: process.env.ALCHEMY_API_KEY,
-      network: Network.BASE_MAINNET,
-    }
-
-    const alchemy = new Alchemy(settings)
-
-    const txs = await alchemy.core.getAssetTransfers({
-      fromBlock: '0x0',
-      toAddress: address,
-      category: [
-        AssetTransfersCategory.EXTERNAL,
-        AssetTransfersCategory.INTERNAL,
-        AssetTransfersCategory.ERC20,
-        AssetTransfersCategory.ERC721,
-        AssetTransfersCategory.ERC1155,
-      ],
-      maxCount: 5,
-    })
-
-    return NextResponse.json(txs)
-  } catch (error) {
-    console.error('Error in /api/txs:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch transactions' },
-      { status: 500 }
+    const response = await fetch(
+      `https://base-mainnet.g.alchemy.com/v2/${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'alchemy_getAssetTransfers',
+          params: [
+            {
+              fromBlock: '0x0',
+              toBlock: 'latest',
+              toAddress: address,
+              category: ['external', 'erc20', 'erc721', 'erc1155'],
+              withMetadata: true,
+              excludeZeroValue: true,
+              maxCount: '0xA',
+            },
+          ],
+        }),
+      }
     )
+
+    if (!response.ok) {
+      throw new Error(`Alchemy API request failed: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return res.status(200).json(data)
+  } catch (err: any) {
+    console.error('Alchemy fetch error:', err)
+    return res
+      .status(500)
+      .json({ error: err.message || 'Internal Server Error' })
   }
 }
