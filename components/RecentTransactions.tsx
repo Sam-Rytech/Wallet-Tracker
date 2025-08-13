@@ -1,53 +1,77 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
-export default function RecentTransactions() {
-  const [address, setAddress] = useState('')
-  const [txs, setTxs] = useState<any[]>([])
+interface RecentTransactionsProps {
+  defaultAddress: string
+}
 
-  const fetchTxs = async () => {
-    if (!address) return
+export default function RecentTransactions({
+  defaultAddress,
+}: RecentTransactionsProps) {
+  const [transactions, setTransactions] = useState<any[]>([])
 
-    const res = await fetch(`/api/txs?address=${address}`)
-    if (!res.ok) {
-      console.error('API error:', await res.text())
-      setTxs([])
-      return
+  useEffect(() => {
+    if (!defaultAddress) return
+
+    const fetchTransactions = async () => {
+      try {
+        const res = await fetch(
+          `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: 1,
+              jsonrpc: '2.0',
+              method: 'alchemy_getAssetTransfers',
+              params: [
+                {
+                  fromBlock: '0x0',
+                  toAddress: defaultAddress,
+                  category: ['external', 'erc20', 'erc721'],
+                  withMetadata: true,
+                  excludeZeroValue: true,
+                  maxCount: '0xA',
+                },
+              ],
+            }),
+          }
+        )
+
+        if (!res.ok) throw new Error(`Failed to fetch transactions`)
+
+        const data = await res.json()
+        setTransactions(data.result?.transfers || [])
+      } catch (err) {
+        console.error('Error fetching transactions:', err)
+      }
     }
 
-    const data = await res.json()
-    if (data?.result?.transfers) {
-      setTxs(data.result.transfers)
-    } else {
-      setTxs([])
-    }
-  }
+    fetchTransactions()
+  }, [defaultAddress])
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Enter Base wallet address"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-        className="border p-2 mr-2"
-      />
-      <button
-        onClick={fetchTxs}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        Search
-      </button>
-
-      <h3 className="mt-4 font-bold">Recent Transactions</h3>
-      {txs.length === 0 ? (
+      <h2 className="text-lg font-semibold mb-4">Recent Transactions</h2>
+      {transactions.length === 0 ? (
         <p>No recent transactions</p>
       ) : (
-        <ul className="mt-2">
-          {txs.map((tx, i) => (
-            <li key={i} className="border-b py-2">
-              {tx.hash}
+        <ul className="space-y-2">
+          {transactions.map((tx, idx) => (
+            <li key={idx} className="bg-gray-800 p-3 rounded-lg">
+              <p>
+                <strong>From:</strong> {tx.from}
+              </p>
+              <p>
+                <strong>To:</strong> {tx.to}
+              </p>
+              <p>
+                <strong>Amount:</strong> {tx.value}
+              </p>
+              <p>
+                <strong>Hash:</strong> {tx.hash}
+              </p>
             </li>
           ))}
         </ul>
