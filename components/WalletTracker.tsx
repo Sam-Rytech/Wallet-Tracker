@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ethers } from 'ethers'
 import provider from '../lib/provider'
 
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: any
   }
 }
 
@@ -17,14 +17,19 @@ export default function WalletTracker({
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [inputAddress, setInputAddress] = useState<string>('')
   const [balance, setBalance] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(false)
 
   // Fetch balance for current wallet
   const fetchBalance = async (address: string) => {
     try {
+      setLoading(true)
       const bal = await provider.getBalance(address)
-      setBalance(ethers.formatEther(bal))
+      setBalance(parseFloat(ethers.formatEther(bal)).toFixed(4))
     } catch (err) {
       console.error('Balance fetch error:', err)
+      setBalance('Error')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -35,9 +40,10 @@ export default function WalletTracker({
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       })
-      setWalletAddress(accounts[0])
-      onAddressChange(accounts[0])
-      fetchBalance(accounts[0])
+      const addr = accounts[0]
+      setWalletAddress(addr)
+      onAddressChange(addr)
+      fetchBalance(addr)
     } catch (err) {
       console.error('Wallet connection error:', err)
     }
@@ -47,6 +53,7 @@ export default function WalletTracker({
   const handleSearch = () => {
     if (ethers.isAddress(inputAddress)) {
       setWalletAddress(inputAddress)
+      setBalance('')
       onAddressChange(inputAddress)
       fetchBalance(inputAddress)
     } else {
@@ -85,12 +92,13 @@ export default function WalletTracker({
 
       {/* Wallet Info */}
       {walletAddress && (
-        <div className="mt-4">
+        <div className="mt-4 space-y-1">
           <p>
             <strong>Address:</strong> {walletAddress}
           </p>
           <p>
-            <strong>ETH Balance:</strong> {balance} ETH
+            <strong>ETH Balance:</strong>{' '}
+            {loading ? 'Loading...' : `${balance} ETH`}
           </p>
         </div>
       )}
