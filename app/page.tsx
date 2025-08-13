@@ -1,16 +1,15 @@
 'use client'
-
 import { useState } from 'react'
 import WalletTracker from '../components/WalletTracker'
 import RecentTransactions from '../components/RecentTransactions'
 
-export default function Page() {
-  const [address, setAddress] = useState<string>('')
+export default function HomePage() {
+  const [currentAddress, setCurrentAddress] = useState<string>('')
 
   return (
-    <main className="flex flex-col items-center justify-start gap-6 w-full">
-      <WalletTracker onAddress={setAddress} />
-      {address && <RecentTransactions address={address} />}
+    <main className="p-6 max-w-4xl mx-auto">
+      <WalletTracker onAddressChange={setCurrentAddress} />
+      {currentAddress && <RecentTransactions address={currentAddress} />}
     </main>
   )
 }
